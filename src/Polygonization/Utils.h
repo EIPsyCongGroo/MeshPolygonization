@@ -33,6 +33,12 @@ inline std::vector<Vertex> vertex_around_face(const Mesh* mesh, Face face) {
 	return vertices;
 }
 
+inline bool operator==(const Point_3& p, const Point_3& q)
+{
+    return (p.x() == q.x()) && (p.y() == q.y()) && (p.z() == q.z());
+}
+
+
 // Face around target circulator
 inline std::vector<Face> face_around_vertex(const Mesh* mesh, Vertex vertex) {
 	std::vector<Face> faces;

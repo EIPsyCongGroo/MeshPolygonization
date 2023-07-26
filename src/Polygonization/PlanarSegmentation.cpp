@@ -291,3 +291,153 @@ std::size_t PlanarSegmentation::refine_segmentation(Mesh* mesh, std::size_t seg_
 
 	return seg_number;
 }
+
+Mesh PlanarSegmentation::apply(Mesh *mesh, double dist_thres) {
+    Mesh poly_mesh;
+    int num_rings = 3;
+    // Collect mesh vertices
+    std::set<Face> faces;
+    for (auto f : mesh->faces()) {
+        faces.insert(f);
+    }
+    VProp_int boundry = mesh->add_property_map<Vertex, int>("f:boundry", 0).first;
+    std::map<Point_3, Vertex> Vmap;
+
+    // Project vertices on supporting plane
+    VProp_geom geom = mesh->points();
+    // Create chart attribute
+    FProp_int chart = mesh->add_property_map<Face, int>("f:chart", -1).first;
+    FProp_color color = mesh->add_property_map<Face, Point_3>("f:color", Point_3(0, 0, 0)).first;
+
+    double dist = std::pow(dist_thres, 2);
+    Point_3 current_color = random_color();
+    int current_index = 0;
+    std::size_t seg_number = 0;
+    std::map<int, Plane_3> plane_map;
+    std::map<int, std::set<Face>> segment_map;
+
+    while (faces.size() != 0) {
+        // Locate vertex with highest planarity
+        Face max_face = get_max_planarity_face(mesh, &faces);
+
+        // Initialize current region
+        std::set<Face> current_region;
+        std::set<Face> seeds;
+
+        // Calculate initial plane
+        std::set<Face> neighbors = get_k_ring_faces(mesh, max_face, num_rings);
+        Plane_3 plane = fit_plane_to_faces(mesh, &neighbors);
+
+        // Update
+        faces.erase(max_face);
+        seeds.insert(max_face);
+
+        while (seeds.size() != 0) {
+            // Collect 1-ring faces for all seeds
+            neighbors.clear();
+            std::set<Face> new_neighbors;
+
+            for (auto seed : seeds) {
+                // Collect faces
+                new_neighbors = get_k_ring_faces(mesh, seed, 1);
+                neighbors.insert(new_neighbors.begin(), new_neighbors.end());
+            }
+            seeds.clear();
+
+            // Check neighboring faces
+            for (auto neighbor : neighbors) {
+                // Check visited
+                bool is_visited = chart[neighbor] != -1;
+                if (is_visited) continue;
+
+                // Check distance
+                bool is_fitting = check_distance(mesh, &neighbor, &plane, dist);
+                if (is_fitting) {
+                    // Add face to current region
+                    current_region.insert(neighbor);
+                    chart[neighbor] = current_index;
+                    color[neighbor] = current_color;
+
+                    // Update
+                    faces.erase(neighbor);
+                    seeds.insert(neighbor);
+                }
+            }
+
+            // Calculate plane for current region
+            if (!current_region.empty())
+                plane = fit_plane_to_faces(mesh, &current_region);
+        }
+
+
+        for (auto face : current_region)
+        {
+            //std::vector<Vertex> face_vertices;
+            std::vector<Vertex> fc = vertex_around_face(mesh, face);
+            for (auto v : fc)
+            {
+                Point_3 proj = plane.projection(geom[v]);
+                geom[v] = proj;
+                /*Vertex pv = poly_mesh.add_vertex(proj);
+                face_vertices.push_back(pv);*/
+                std::vector<Face> fv = face_around_vertex(mesh, v);
+                for (auto face:fv)
+                {
+                    if (chart[face] != current_index) {
+                        //std::cout << "chart: " << chart[face] << "\tcurrent_index: " << current_index << std::endl;
+                        boundry[v] = 1;
+                        auto it = Vmap.find(mesh->point(v));
+                        if (it != Vmap.end())
+                        {
+                            Vmap[mesh->point(v)] = it->second;
+                        }
+                        else
+                        {
+                            Vertex new_v = poly_mesh.add_vertex(mesh->point(v));
+                            Vmap[mesh->point(v)] = new_v;
+                        }
+                        break;
+                    }
+                }
+            }
+//            poly_mesh.add_face(face_vertices);
+        }
+
+        // Store
+        plane_map[current_index] = plane;
+        segment_map[current_index] = current_region;
+
+        // Initialize search for next region
+        current_region.clear();
+        current_index += 1;
+        seg_number += 1;
+        current_color = random_color();
+    }
+
+    VProp_int processed = mesh->add_property_map<Vertex, int>("f:processed", 0).first;
+    for (auto id = 0; id < seg_number; id++)
+    {
+        std::vector<Vertex> face_vertices;
+        for(auto f : segment_map[id])
+        {
+            std::vector<Vertex> vf = vertex_around_face(mesh, f);
+            for (auto v : vf)
+            {
+                if (boundry[v] == 1)
+                {
+                    face_vertices.push_back(Vmap[mesh->point(v)]);
+                }
+
+            }
+        }
+        Face F = poly_mesh.add_face(face_vertices);
+        if(F == Mesh ::null_face())
+        {
+            std::cout << "Failed to add face id: "<< id << std::endl;
+        }
+    }
+    std::cout << "Number of planes: " << seg_number << std::endl;
+
+    return poly_mesh;
+}
+

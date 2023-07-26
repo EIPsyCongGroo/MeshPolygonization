@@ -53,7 +53,7 @@ Mesh Simplification::apply(const Mesh* mesh, const Graph* G, LinearProgramSolver
 	std::vector<Candidate_face> faces = compute_mesh_faces(mesh, G, &plane_map, &edges);
 
 	// Optimize
-	return simplify(&vertices, &edges, &faces, solver_name);;
+	return simplify(&vertices, &edges, &faces, solver_name);
 }
 
 
@@ -425,46 +425,65 @@ Mesh Simplification::simplify(std::vector<Triple_intersection>* vertices, std::v
 		}
 		Face f = proxy_mesh.add_face(face_vertices);
 
-		// Add attributes
-		vertex_indices[f] = face.vertices;                 // Vertex indices
-		supporting_face_num[f] = face.supporting_face_num; // Number of supporting faces
-		covered_area[f] = face.covered_area;               // Covered area
-		area[f] = face.area;                               // Total area
-
-		// Update edges
-		// Retrieve face edges
-		auto face_edges = face.edges;
-		for (auto i = 0; i < edges->size(); i++) {
-			// Check if edge is in face edges
-			auto pos = std::find(face_edges.begin(), face_edges.end(), i);
-
-			// If so, add to edge fan
-			if (pos != face_edges.end()) { 
-				(*edges)[i].fan.push_back(f);
-			}
-		}
+//		// Add attributes
+//		vertex_indices[f] = face.vertices;                 // Vertex indices
+//		supporting_face_num[f] = face.supporting_face_num; // Number of supporting faces
+//		covered_area[f] = face.covered_area;               // Covered area
+//		area[f] = face.area;                               // Total area
+//
+//		// Update edges
+//		// Retrieve face edges
+//		auto face_edges = face.edges;
+//		for (auto i = 0; i < edges->size(); i++) {
+//			// Check if edge is in face edges
+//			auto pos = std::find(face_edges.begin(), face_edges.end(), i);
+//
+//			// If so, add to edge fan
+//			if (pos != face_edges.end()) {
+//				(*edges)[i].fan.push_back(f);
+//			}
+//		}
+//	}
+//
+//	// Optimize
+//	std::vector<double> X = optimize(&proxy_mesh, edges, solver_name);
+//
+//	// Faces to delete
+//	std::vector<Face> to_delete;
+//	std::size_t f_idx(0);
+//	for (auto f : proxy_mesh.faces()) {
+//		if (static_cast<int>(std::round(X[f_idx])) == 0)
+//			to_delete.push_back(f);
+//		++f_idx;
+//	}
+//
+//	// Face deletion
+//	for (std::size_t i = 0; i < to_delete.size(); ++i) {
+//	    Face f = to_delete[i];
+//		Halfedge h = proxy_mesh.halfedge(f);
+//		CGAL::Euler::remove_face(h, proxy_mesh);
 	}
-
-	// Optimize
-	std::vector<double> X = optimize(&proxy_mesh, edges, solver_name);
-
-	// Faces to delete
-	std::vector<Face> to_delete;
-	std::size_t f_idx(0);
-	for (auto f : proxy_mesh.faces()) {
-		if (static_cast<int>(std::round(X[f_idx])) == 0)
-			to_delete.push_back(f);
-		++f_idx;
-	}
-
-	// Face deletion
-	for (std::size_t i = 0; i < to_delete.size(); ++i) {
-	    Face f = to_delete[i];
-		Halfedge h = proxy_mesh.halfedge(f);
-		CGAL::Euler::remove_face(h, proxy_mesh);
-	}
-
-	// Ensure consistent orientation
-	orient(&proxy_mesh, vertices);
+//
+//	// Ensure consistent orientation
+	//orient(&proxy_mesh, vertices);
 	return proxy_mesh;
+}
+
+Point_set Simplification::apply(const Mesh *mesh, const Graph *G)
+{
+    // Compute bbox of original mesh
+    Bbox_3 bbox = CGAL::Polygon_mesh_processing::bbox(*mesh);
+
+    // Supporting plane map
+    std::map<unsigned int, Plane_3> plane_map = compute_supporting_planes(mesh, G);
+
+    // Compute mesh vertices
+    std::vector<Triple_intersection> vertices = compute_mesh_vertices(&bbox, G, &plane_map);
+
+    Point_set pointSet;
+    for (const auto & v:vertices) {
+        pointSet.insert(v.point);
+    }
+
+    return pointSet;
 }

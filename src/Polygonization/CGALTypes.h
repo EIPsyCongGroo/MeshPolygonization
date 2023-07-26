@@ -35,7 +35,7 @@
 #include <CGAL/Polygon_2_algorithms.h>
 #include <CGAL/convex_hull_2.h>
 #include <CGAL/bounding_box.h>
-
+#include <CGAL/Point_set_3.h>
 
 // GEOMETRY //
 typedef CGAL::Simple_cartesian<double>                      Kernel;
@@ -56,6 +56,7 @@ typedef Kernel::Plane_3                                     Plane_3;
 typedef Kernel::Line_3                                      Line_3;
 typedef CGAL::Bbox_3                                        Bbox_3;
 typedef Kernel::Vector_3                                    Vector_3;
+typedef CGAL::Point_set_3<Point_3>                          Point_set;
 // 3D //
 // GEOMETRY //
 

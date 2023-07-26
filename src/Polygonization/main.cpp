@@ -34,10 +34,10 @@ int main(int argc, char *argv[]) {
 	srand(time(NULL));
 
     std::string input_file = std::string(POLYGONIZATION_ROOT_DIR) + "/../data/arc.off";
-    std::cout << "input model: " << input_file << std::endl;
+
     if (argc == 2)
         input_file = argv[1];
-
+    std::cout << "input model: " << input_file << std::endl;
 	// Read mesh
 	Mesh mesh;
     if (CGAL::Polygon_mesh_processing::IO::read_polygon_mesh(input_file, mesh) == false) {
@@ -56,6 +56,8 @@ int main(int argc, char *argv[]) {
 	// Segmentation inputs
 #if 1
     double dist_threshold = 0.8;    // NOTE: you can modify this parameter here
+    std::cout << "\tinput Distance threshold: " << "\n";
+    std::cin >> dist_threshold;
 #else
     double dist_threshold = 0.0;
 	VProp_geom geom = mesh.points();
@@ -66,11 +68,13 @@ int main(int argc, char *argv[]) {
 	}
     dist_threshold /= mesh.num_edges();
 #endif
-    std::cout << "\tDistance threshold: " << std::setprecision(2) << dist_threshold << std::endl;
+    std::cout << "\tDistance threshold: " << std::setprecision(2) << dist_threshold << std::endl<< "\n";
 
 	// StructureGraph inputs
-	double importance_threshold = 0.0;    // NOTE: you can modify this parameter here
-	std::cout << "\tImportance threshold: " << std::setprecision(2) << importance_threshold << std::endl;
+	/*double importance_threshold = 0.0;    // NOTE: you can modify this parameter here
+    std::cout << "\tinput Importance threshold: " << "\n";
+    std::cin >> importance_threshold;
+	std::cout << "\tImportance threshold: " << std::setprecision(2) << importance_threshold << std::endl;*/
 
     auto solver = LinearProgramSolver::GUROBI;    // NOTE: you can modify this parameter here (available solvers are Gurobi and SCIP)
 #ifdef HAS_GUROBI
@@ -94,13 +98,15 @@ int main(int argc, char *argv[]) {
 	// Initialize segmentation
 	start = std::chrono::steady_clock::now();
 	PlanarSegmentation seg;
-	std::size_t seg_number = seg.apply(&mesh, dist_threshold, num_rings);
+	//std::size_t seg_number = seg.apply(&mesh, dist_threshold, num_rings);
+    Mesh segPolyMesh = seg.apply(&mesh, dist_threshold);
 	// Execution time
 	end = std::chrono::steady_clock::now();
 	duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 	std::cout << "Segmentation: " << std::setprecision(1) << duration.count() / 1000.0 << " secs" << std::endl;
+    CGAL::IO::write_OBJ(input_file + "-segPolyMesh.obj", segPolyMesh);
 
-	// StructureGraph
+	/*// StructureGraph
 	start = std::chrono::steady_clock::now();
 	StructureGraph graph;
 	Graph structure_graph = graph.construct(&mesh, seg_number, importance_threshold);
@@ -110,7 +116,7 @@ int main(int argc, char *argv[]) {
 	std::cout << "Structure Graph: " << std::setprecision(1) << duration.count() / 1000.0 << " secs" << std::endl;
 
 	// Write the mesh with computed face/vertex properties
-//	writeMesh(&mesh, input_file + "-segmentation.ply");
+	writeMesh(&mesh, input_file + "-segmentation.ply");
 
 	// Write graph
 //	writeGraph(&mesh, &structure_graph, input_file + "-graph.obj");
@@ -119,15 +125,17 @@ int main(int argc, char *argv[]) {
 	start = std::chrono::steady_clock::now();
 	Simplification simpl;
 	Mesh simplified = simpl.apply(&mesh, &structure_graph, solver);
+    //Point_set simplified = simpl.apply(&mesh, &structure_graph);
 	// Execution time
 	end = std::chrono::steady_clock::now();
 	duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 	std::cout << "Simplification: " << std::setprecision(1) << duration.count() / 1000.0 << " secs" << std::endl;
 
 	// Write simplified mesh
-	const std::string result_file = input_file + "-result.ply";
+	const std::string result_file = input_file + std::to_string(dist_threshold).substr(0,4) + "-" + std::to_string(importance_threshold).substr(0,4) +  "-result.ply";
 	writeSimplified(&simplified, result_file);
-	std::cout << "Done. Result saved to file \'" << result_file << std::endl;
+    //CGAL::IO::write_PLY(result_file, simplified);
+	std::cout << "Done. Result saved to file \'" << result_file << std::endl;*/
 
 	return EXIT_SUCCESS;
 }

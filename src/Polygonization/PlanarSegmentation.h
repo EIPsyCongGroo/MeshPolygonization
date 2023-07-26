@@ -25,6 +25,7 @@ public:
 	~PlanarSegmentation();
 
 	std::size_t apply(Mesh* mesh, double dist_thres, unsigned int num_rings);
+    Mesh apply(Mesh* mesh, double dist_thres);
 
 private:
 	Face get_max_planarity_face(const Mesh* mesh, std::set<Face>* faces);
